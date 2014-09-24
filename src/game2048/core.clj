@@ -1,18 +1,10 @@
 (ns game2048.core)
 
-"I have a thought: using lonocloud.graph to navigate the array. The thought is
-that left, right, up, down directions might be considered navigations. That is,
-instead of using explicit links in a map, somehow use a protocol to express
-implicit links. Just like traversing nodes in a graph, traversing the array
-would provide the total array as a context.
-
-No idea how to achieve the vision or even what that vision might be."
-
 (def board
   [0,0,0,0
-   0,2,0,2
-   2,2,4,4
-   0,8,0,0])
+   0,0,0,0
+   0,0,0,0
+   0,0,0,0])
 
 ;; TODO These functions all hard code a 4x4 board maybe it would be better to
 ;; generate these functions based on the board dimensions.
@@ -22,8 +14,9 @@ No idea how to achieve the vision or even what that vision might be."
   (when (not= 0 (rem idx 4))
     (- idx 1)))
 
-(defn up [idx]
+(defn up
   "Return index above idx or nil when at edge."
+  [idx]
   (when (>= idx 4)
     (- idx 4)))
 
@@ -39,14 +32,13 @@ No idea how to achieve the vision or even what that vision might be."
    (when (< idx 12)
     (+ idx 4)))
 
-(defn cells 
+(defn cells
   "Returns a sequence of board indicies specified by direction. Each specific
   sequence is designed so that values in the cells are only operated once by
   slide or combine operations."
   [direction]
   (let [idxs (range 16)
-        size 4
-        ]
+        size 4]
     (condp = direction
       left (map #(+ (int (/ % size)) (* size (rem % size)))
                 idxs)
@@ -54,9 +46,9 @@ No idea how to achieve the vision or even what that vision might be."
       down (reverse (cells up))
       up idxs)))
 
-(defn find-empty-cell
-  "Return the index of the farthest zero cell in direction, starting at idx and
-  with only zero cells between them. If on the edge or next to an existing
+(defn find-blank
+  "Return the index of the farthest blank cell in direction, starting at idx and
+  with only blank cells between them. If on the edge or next to an existing
   cell, return idx."
   [board direction idx]
   (loop [cell idx]
@@ -66,14 +58,14 @@ No idea how to achieve the vision or even what that vision might be."
         cell))))
 
 (defn slide
-  "Slide each non-zero value in direction until stopped by another value or the
-  edge."
+  "Slide each non-blank in direction until stopped by another value or
+  the edge."
   [board direction]
   (reduce
     (fn [board cell]
       (if (zero? (get board cell))
         board
-        (let [new-cell (find-empty-cell board direction cell)]
+        (let [new-cell (find-blank board direction cell)]
           (if (not= cell new-cell)
             (assoc board
                    new-cell (get board cell)
@@ -93,38 +85,31 @@ No idea how to achieve the vision or even what that vision might be."
         (assoc board
                (direction cell) (* 2 (get board cell))
                cell 0)
-        board)
-      )
+        board))
     board
-    (cells direction))
-  )
+    (cells direction)))
 
 (defn tilt [board direction]
-  "Tilt the board according to the specified direction.
-   Tilting is done in three steps:
-    1. slide all numbers in direction,
-    2. merge same numbers in direction and
-    3. slide all combined numbers in direction again."
-
+  "Tilt the board according to the specified direction."
   (-> board
       (slide direction)
       (combine direction)
       (slide direction)))
 
-(defn rand-zero-cell
-  "Return the index of a random zero cell or nil if no zero cell exists."
+(defn rand-blank
+  "Return the index of a random blank cell or nil if no blank cell exists."
   [board]
   (->> board
        (map list (range))
        (filter #(zero? (second %)))
-       shuffle
-       ffirst))
+       rand-nth
+       first))
 
 (defn pollute
   "Add a value to index."
   [board]
-  (if-let [idx (rand-zero-cell board)]
-    (assoc board idx (if (zero? (rand-int 10)) 4 2))
+  (if-let [idx (rand-blank board)]
+    (assoc board idx (if (< (rand) 0.1) 4 2))
     board))
 
 (defn show
@@ -135,4 +120,18 @@ No idea how to achieve the vision or even what that vision might be."
   (println "_________")
   board)
 
-()
+(defn play-turn
+  "Play a single turn."
+  [board direction]
+  (-> board
+      (tilt direction)
+      pollute
+      show))
+
+(defn new-game
+  "Return a new game."
+  []
+  (-> board
+      pollute
+      pollute
+      show))
