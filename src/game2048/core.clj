@@ -1,6 +1,17 @@
-(ns game2048.core)
+(ns game2048.core
+  (:require [game2048.sys :as sys]
+            [lonocloud.synthread :as ->]))
 
-(def board
+(comment
+  "I'd like to define a 2048 component.
+  Steps towards that goal:
+    1. defrecord with all the state needed by this component including
+       any subcomponents.
+    2. Use only functional subcomponents: all functions must act as
+       updaters or getters.
+    3. Mark state that needs to be immutable.")
+
+(def empty-board
   [0,0,0,0
    0,0,0,0
    0,0,0,0
@@ -96,42 +107,97 @@
       (combine direction)
       (slide direction)))
 
-(defn rand-blank
-  "Return the index of a random blank cell or nil if no blank cell exists."
+(defn find-blanks
+  "Return a sequence of indicies for all blank cells found in board."
   [board]
   (->> board
        (map list (range))
        (filter #(zero? (second %)))
-       rand-nth
-       first))
+       (map first)))
+
+(defn rnd-val
+  "Randomly pick a new value. 1/10 = 4, 9/10 = 2."
+  [rng]
+  (if (< (sys/num- rng) 0.1)
+    4
+    2))
 
 (defn pollute
-  "Add a value to index."
-  [board]
-  (if-let [idx (rand-blank board)]
-    (assoc board idx (if (< (rand) 0.1) 4 2))
-    board))
+  "Add a random value to a random blank cell."
+  [game blanks]
+
+  ;; with syntax support and updater functions only
+  (-> game
+      (->/let [idx (by :rng sys/gen- (sys/rnd-nth blanks))
+               val (by :rng sys/gen- rnd-val)]
+        (assoc-in [:board idx] val))))
 
 (defn show
   "Print current board state."
-  [board]
-  (doseq [row (partition 4 board)]
-    (println row))
-  (println "_________")
-  board)
+  [{:keys [board over] :as game}]
+  (-> game
+      (update-in [:writer] sys/write-
+                 (if over
+                   "Game over!"
+                   (->> board
+                        (map #(if (zero? %) '. %))
+                        (partition 4)
+                        (map #(str (vec %) "\n"))
+                        (cons "_________\n")
+                        (apply str)
+                        )))))
+
+;; Rubber meets the road from this point on.
+;; Everything above here was
+(defrecord Game [^:immutable board, rng, writer, reader])
+
+(defn parse-input
+  "Parse the input text to determine which direction to tilt the board."
+  [text]
+  (condp = text
+    "h" left
+    "j" down
+    "k" up
+    "l" right
+    "q" :quit
+    nil))
 
 (defn play-turn
   "Play a single turn."
-  [board direction]
-  (-> board
-      (tilt direction)
-      pollute
-      show))
+  [game]
+  (->/do game
+         (->/let [cmd (by :reader sys/read- (-> sys/value- parse-input))]
+           (->/when-not (nil? cmd)
+             (->/if (= :quit cmd)
+               (assoc :over true)
+               (->/let [old-board (:board <>)
+                        new-board (by :board (tilt cmd))
+                        blanks (find-blanks new-board)]
+                 (->/if (= old-board new-board)
+                   (->/when (= old-board
+                               (tilt old-board up)
+                               (tilt old-board left))
+                     (assoc :over true))
+                   (pollute blanks))))
+             show))))
 
 (defn new-game
-  "Return a new game."
-  []
-  (-> board
-      pollute
-      pollute
-      show))
+  "Return a new game complete with initial pollution."
+  [& {:keys [seed reader]}]
+  (->/do (->Game empty-board
+                 (if seed
+                   (sys/new-rng seed)
+                   (sys/new-rng))
+                 nil
+                 (or reader ""))
+         (pollute (-> <> :board find-blanks))
+         (pollute (-> <> :board find-blanks))
+         show))
+
+(defn play-game
+  "Play an entire game."
+  [game]
+  (loop [game game]
+    (if (:over game)
+      game
+      (recur (play-turn game)))))
