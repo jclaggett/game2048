@@ -115,41 +115,34 @@
        (filter #(zero? (second %)))
        (map first)))
 
-(defn rnd-val
-  "Randomly pick a new value. 1/10 = 4, 9/10 = 2."
-  [rng]
-  (if (< (sys/num- rng) 0.1)
-    4
-    2))
+;; Rubber meets the road from this point on.
+;; every function below here are updater functions on game.
+(defrecord Game [^:immutable board, rng, writer, reader])
 
 (defn pollute
-  "Add a random value to a random blank cell."
-  [game blanks]
+  "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
+  [game]
 
   ;; with syntax support and updater functions only
   (-> game
-      (->/let [idx (by :rng sys/gen- (sys/rnd-nth blanks))
-               val (by :rng sys/gen- rnd-val)]
+      (->/let [idx (by :rng sys/gen- (sys/rnd-nth (find-blanks (:board <>))))
+               val (by :rng sys/gen- (-> sys/num- (#(if (< 0.1 %) 4 2))))]
         (assoc-in [:board idx] val))))
 
 (defn show
   "Print current board state."
-  [{:keys [board over] :as game}]
-  (-> game
-      (update-in [:writer] sys/write-
-                 (if over
+  [game]
+  (->/do game
+         (update-in [:writer] sys/write-
+                 (if (:over game)
                    "Game over!"
-                   (->> board
+                   (->> (:board game)
                         (map #(if (zero? %) '. %))
                         (partition 4)
                         (map #(str (vec %) "\n"))
                         (cons "_________\n")
                         (apply str)
                         )))))
-
-;; Rubber meets the road from this point on.
-;; Everything above here was
-(defrecord Game [^:immutable board, rng, writer, reader])
 
 (defn parse-input
   "Parse the input text to determine which direction to tilt the board."
@@ -171,14 +164,13 @@
              (->/if (= :quit cmd)
                (assoc :over true)
                (->/let [old-board (:board <>)
-                        new-board (by :board (tilt cmd))
-                        blanks (find-blanks new-board)]
+                        new-board (by :board (tilt cmd))]
                  (->/if (= old-board new-board)
                    (->/when (= old-board
                                (tilt old-board up)
                                (tilt old-board left))
                      (assoc :over true))
-                   (pollute blanks))))
+                   pollute)))
              show))))
 
 (defn new-game
@@ -190,8 +182,8 @@
                    (sys/new-rng))
                  nil
                  (or reader ""))
-         (pollute (-> <> :board find-blanks))
-         (pollute (-> <> :board find-blanks))
+         pollute
+         pollute
          show))
 
 (defn play-game
