@@ -24,6 +24,18 @@
     nil
     (nth coll (int (* (num- rng) (count coll))))))
 
+(defn weighted-rnd-nth
+  [rng pairs]
+  (if (empty? pairs)
+    nil
+    (let [total (apply + (map second pairs))
+          target (int (* (num- rng) total))]
+      (reduce (fn [running-total [x weight]]
+                (let [new-weight (+ running-total weight)]
+                  (if (> new-weight target)
+                    (reduced x)
+                    new-weight))) 0 pairs))))
+
 (defrecord JavaRNG [num obj]
   RNG
   (seed- [self v]
