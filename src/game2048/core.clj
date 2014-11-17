@@ -137,19 +137,30 @@
   (value- [_]
     (sys/weighted-rnd-nth rng [[:up 1] [:left 100] [:down 1000] [:right 100]])))
 
+(defn board-str [board over]
+  (if over
+    "Game over!"
+    (->> board
+         (map #(if (zero? %) '. %))
+         (partition 4)
+         (map #(str (vec %) "\n"))
+         (cons "_________\n")
+         (apply str))))
+
 (defrecord Writer2048 [writer]
   sys/Writer
   (write- [self game]
     (update-in self [:writer] sys/write-
-               (if (:over game)
-                 "Game over!"
-                 (->> (:board game)
-                      (map #(if (zero? %) '. %))
-                      (partition 4)
-                      (map #(str (vec %) "\n"))
-                      (cons "_________\n")
-                      (apply str)
-                      )))))
+               (board-str (:over game) (:board game)))))
+
+(defrecord WriterCounter [i]
+  sys/Writer
+  (write- [self game]
+    (-> self
+        (->/if (:over game)
+               (->/assoc :writer (sys/write-
+                                   (str (board-str (:board game) false) "\nBoard iterations: " i)))
+               (->/assoc :i inc)))))
 
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
@@ -169,12 +180,12 @@
 
 (defn new-game
   "Return a new game complete with initial pollution."
-  [& {:keys [seed reader]}]
+  [& {:keys [seed reader writer]}]
   (->/do (->Game empty-board
                  (if seed
                    (sys/new-rng seed)
                    (sys/new-rng))
-                 (->Writer2048 nil)
+                 (or writer (->Writer2048 nil))
                  (or reader (->Reader2048 "")))
          pollute
          pollute
