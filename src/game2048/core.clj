@@ -130,18 +130,19 @@
       "l" :right
       "q" :quit} text)))
 
-(defn new-game
-  "Return a new game complete with initial pollution."
-  [& {:keys [seed reader]}]
-  (->/do (->Game empty-board
-                 (if seed
-                   (sys/new-rng seed)
-                   (sys/new-rng))
-                 nil
-                 (or reader (->Reader2048 "")))
-         pollute
-         pollute
-         show))
+(defrecord Writer2048 [writer]
+  sys/Writer
+  (write- [self game]
+    (update-in self [:writer] sys/write-
+               (if (:over game)
+                 "Game over!"
+                 (->> (:board game)
+                      (map #(if (zero? %) '. %))
+                      (partition 4)
+                      (map #(str (vec %) "\n"))
+                      (cons "_________\n")
+                      (apply str)
+                      )))))
 
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
@@ -156,17 +157,21 @@
 (defn show
   "Print current board state."
   [game]
-  (->/do game
-         (update-in [:writer] sys/write-
-                 (if (:over game)
-                   "Game over!"
-                   (->> (:board game)
-                        (map #(if (zero? %) '. %))
-                        (partition 4)
-                        (map #(str (vec %) "\n"))
-                        (cons "_________\n")
-                        (apply str)
-                        )))))
+  (update-in game [:writer]
+             sys/write- (select-keys game [:over :board])))
+
+(defn new-game
+  "Return a new game complete with initial pollution."
+  [& {:keys [seed reader]}]
+  (->/do (->Game empty-board
+                 (if seed
+                   (sys/new-rng seed)
+                   (sys/new-rng))
+                 (->Writer2048 nil)
+                 (or reader (->Reader2048 "")))
+         pollute
+         pollute
+         show))
 
 (def cmd-map
   {:up up
