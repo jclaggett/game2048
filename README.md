@@ -21,7 +21,7 @@ Here are the specific rules of this style:
 2. Updater Functions may perform side effects. No other functions may perform
    side effects or call functions that do.
 3. Updater Functions may mutate their first argument and no other argument. No
-   other fuctions may mutate their arguments or call functions that do.
+   other functions may mutate their arguments or call functions that do.
 
 ## License
 
