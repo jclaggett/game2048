@@ -115,59 +115,13 @@
        (filter #(zero? (second %)))
        (map first)))
 
-(defprotocol Player
-  (^:updater make-move- [self board-over])
-  (get-move- [self]))
-
-(defrecord PlayerReadWrite [reader writer]
-  Player
-  (make-move- [self board-over]
-    (->/do self
-      (->/assoc :writer (sys/write- board-over)
-                :reader (->/when-not (:over board-over)
-                          sys/read-))))
-  (get-move- [self]
-    (-> reader sys/value-)))
-
-(defrecord PlayerCorner [cmd]
-  Player
-  (make-move- [self {:keys [board over]}]
-    (->/do self
-      (->/if over
-        (->/assoc
-         :cmd (->/reset :quit) ;; not really needed
-         :writer (sys/write- (board-str board false)))
-        (->/do
-          (assoc :cmd
-            (cond
-             (not= board (tilt board down)) :down
-             (not= board (tilt board left)) :left
-             (not= board (tilt board right)) :right
-             (not= board (tilt board up)) :up
-             :true :quit))))))
-  (get-move- [self] cmd))
-
 ;; Rubber meets the road from this point on.
 ;; every function below here are updater functions on game.
 (defrecord Game [^:immutable board, rng, player])
 
-(defrecord Reader2048 [text]
-  sys/Reader
-  (read- [self]
-    (update-in self [:text] sys/read-))
-  (value- [_]
-    ({"h" :left
-      "j" :down
-      "k" :up
-      "l" :right
-      "q" :quit} text)))
-
-(defrecord ReaderRandom [rng]
-  sys/Reader
-  (read- [self]
-    (update-in self [:rng] sys/gen-))
-  (value- [_]
-    (sys/weighted-rnd-nth rng [[:up 1] [:left 100] [:down 1000] [:right 100]])))
+(defprotocol Player
+  (^:updater make-move- [self board-over])
+  (get-move- [self]))
 
 (defn board-str [board over]
   (if over
@@ -179,21 +133,6 @@
          (cons "_________\n")
          (apply str))))
 
-(defrecord Writer2048 [writer]
-  sys/Writer
-  (write- [self game]
-    (update-in self [:writer] sys/write-
-               (board-str (:board game) (:over game)))))
-
-(defrecord WriterCounter [i]
-  sys/Writer
-  (write- [self game]
-    (-> self
-        (->/if (:over game)
-               (->/assoc :writer (sys/write-
-                                   (str (board-str (:board game) false) "\nBoard iterations: " i)))
-               (->/assoc :i inc)))))
-
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
   [game]
@@ -203,19 +142,6 @@
       (->/let [idx (by :rng sys/gen- (sys/rnd-nth (find-blanks (:board <>))))
                val (by :rng sys/gen- (-> sys/num- (#(if (< 0.1 %) 4 2))))]
         (assoc-in [:board idx] val))))
-
-(defn new-game
-  "Return a new game complete with initial pollution."
-  [& {:keys [seed player reader writer]}]
-  (->/do (->Game empty-board
-                 (if seed
-                   (sys/new-rng seed)
-                   (sys/new-rng))
-                 (or player (->PlayerReadWrite
-                             (or reader (->Reader2048 ""))
-                             (or writer (->Writer2048 nil)))))
-         pollute
-         pollute))
 
 (def cmd-map
   {:up up
@@ -228,23 +154,21 @@
   "Play a single turn."
   [game]
   (->/do game
-    (->/let [cmd (by :player
-                     (make-move- (select-keys <> [:board :over]))
-                     (-> get-move- cmd-map))]
-      (->/when (and cmd (not= (:board <>) (tilt (:board <>) cmd)))
-        (->/if (= :quit cmd)
-          (assoc :over true)
-          (->/do
-            (->/assoc :board (tilt cmd))
-            pollute
-            (->/let [board (:board <>)]
-              (->/when (= board
-                          (tilt board up)
-                          (tilt board down)
-                          (tilt board left)
-                          (tilt board right))
-                (assoc :over true)
-                (update-in [:player] make-move- (select-keys <> [:board :over]))))))))))
+    (->/when-let [cmd (by :player
+                          (make-move- (select-keys <> [:board :over]))
+                          (-> get-move- cmd-map))]
+      (->/if (= :quit cmd)
+        (assoc :over true)
+        (->/let [old-board (:board <>)
+                 new-board (by :board (tilt cmd))]
+          pollute
+          (->/when (= new-board
+                      (tilt new-board up)
+                      (tilt new-board down)
+                      (tilt new-board left)
+                      (tilt new-board right))
+            (assoc :over true)
+            (update-in [:player] make-move- (select-keys <> [:board :over]))))))))
 
 (defn play-game
   "Play an entire game."
