@@ -1,14 +1,31 @@
 # game2048
 
-A Clojure library designed to ... well, that part is up to you.
+A Clojure implementation of the 2048 game plus various players that
+play the game. The notable feature of this implementation is it is written
+using "Updater Style" as described in this README.
 
 ## Usage
 
 FIXME
 
+## Updater Style Code
+
+The goal of Updater Style is to encourage composible functions plus modular
+state. The strategy is to limit state changes and side effects to a specific
+class of functions known as 'updater functions'.
+
+Here are the specific rules of this style:
+
+1. An Updater Function is a function that can always accept its return value as
+   its first argument.
+2. Updater Functions may perform side effects. No other functions may perform
+   side effects or call functions that do.
+3. Updater Functions may mutate their first argument and no other argument. No
+   other fuctions may mutate their arguments or call functions that do.
+
 ## License
 
-Copyright © 2014 FIXME
+Copyright © 2014 Jonathan Claggett & Chris Houser
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
