@@ -115,9 +115,23 @@
        (filter #(zero? (second %)))
        (map first)))
 
+(defprotocol Player
+  (^:updater make-move- [self board-over])
+  (get-move- [self]))
+
+(defrecord PlayerReadWrite [reader writer]
+  Player
+  (make-move- [self board-over]
+    (->/do self
+      (->/assoc :writer (sys/write- board-over)
+                :reader (->/when-not (:over board-over)
+                          sys/read-))))
+  (get-move- [self]
+    (-> reader sys/value-)))
+
 ;; Rubber meets the road from this point on.
 ;; every function below here are updater functions on game.
-(defrecord Game [^:immutable board, rng, writer, reader])
+(defrecord Game [^:immutable board, rng, player])
 
 (defrecord Reader2048 [text]
   sys/Reader
@@ -151,7 +165,7 @@
   sys/Writer
   (write- [self game]
     (update-in self [:writer] sys/write-
-               (board-str (:over game) (:board game)))))
+               (board-str (:board game) (:over game)))))
 
 (defrecord WriterCounter [i]
   sys/Writer
@@ -172,24 +186,18 @@
                val (by :rng sys/gen- (-> sys/num- (#(if (< 0.1 %) 4 2))))]
         (assoc-in [:board idx] val))))
 
-(defn show
-  "Print current board state."
-  [game]
-  (update-in game [:writer]
-             sys/write- (select-keys game [:over :board])))
-
 (defn new-game
   "Return a new game complete with initial pollution."
-  [& {:keys [seed reader writer]}]
+  [& {:keys [seed player reader writer]}]
   (->/do (->Game empty-board
                  (if seed
                    (sys/new-rng seed)
                    (sys/new-rng))
-                 (or writer (->Writer2048 nil))
-                 (or reader (->Reader2048 "")))
+                 (or player (->PlayerReadWrite
+                             (or reader (->Reader2048 ""))
+                             (or writer (->Writer2048 nil)))))
          pollute
-         pollute
-         show))
+         pollute))
 
 (def cmd-map
   {:up up
@@ -202,21 +210,23 @@
   "Play a single turn."
   [game]
   (->/do game
-         (->/let [cmd (by :reader sys/read- (-> sys/value- cmd-map))]
-           (->/when-not (nil? cmd)
-             (->/if (= :quit cmd)
-               (assoc :over true)
-               (->/let [old-board (:board <>)
-                        new-board (by :board (tilt cmd))]
-                 (->/if (= old-board new-board)
-                   (->/when (= old-board
-                               (tilt old-board up)
-                               (tilt old-board down)
-                               (tilt old-board left)
-                               (tilt old-board right))
-                     (assoc :over true))
-                   pollute)))
-             show))))
+    (->/let [cmd (by :player
+                     (make-move- (select-keys <> [:board :over]))
+                     (-> get-move- cmd-map))]
+      (->/when-not (nil? cmd)
+                   (->/if (= :quit cmd)
+                     (assoc :over true)
+                     (->/let [old-board (:board <>)
+                              new-board (by :board (tilt cmd))]
+                       (->/if (= old-board new-board)
+                         (->/when (= old-board
+                                     (tilt old-board up)
+                                     (tilt old-board down)
+                                     (tilt old-board left)
+                                     (tilt old-board right))
+                           (assoc :over true)
+                           (update-in [:player] make-move- (select-keys <> [:board :over])))
+                         pollute)))))))
 
 (defn play-game
   "Play an entire game."
