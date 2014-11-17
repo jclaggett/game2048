@@ -129,6 +129,24 @@
   (get-move- [self]
     (-> reader sys/value-)))
 
+(defrecord PlayerCorner [cmd]
+  Player
+  (make-move- [self {:keys [board over]}]
+    (->/do self
+      (->/if over
+        (->/assoc
+         :cmd (->/reset :quit) ;; not really needed
+         :writer (sys/write- (board-str board false)))
+        (->/do
+          (assoc :cmd
+            (cond
+             (not= board (tilt board down)) :down
+             (not= board (tilt board left)) :left
+             (not= board (tilt board right)) :right
+             (not= board (tilt board up)) :up
+             :true :quit))))))
+  (get-move- [self] cmd))
+
 ;; Rubber meets the road from this point on.
 ;; every function below here are updater functions on game.
 (defrecord Game [^:immutable board, rng, player])
@@ -213,20 +231,20 @@
     (->/let [cmd (by :player
                      (make-move- (select-keys <> [:board :over]))
                      (-> get-move- cmd-map))]
-      (->/when-not (nil? cmd)
-                   (->/if (= :quit cmd)
-                     (assoc :over true)
-                     (->/let [old-board (:board <>)
-                              new-board (by :board (tilt cmd))]
-                       (->/if (= old-board new-board)
-                         (->/when (= old-board
-                                     (tilt old-board up)
-                                     (tilt old-board down)
-                                     (tilt old-board left)
-                                     (tilt old-board right))
-                           (assoc :over true)
-                           (update-in [:player] make-move- (select-keys <> [:board :over])))
-                         pollute)))))))
+      (->/when (and cmd (not= (:board <>) (tilt (:board <>) cmd)))
+        (->/if (= :quit cmd)
+          (assoc :over true)
+          (->/do
+            (->/assoc :board (tilt cmd))
+            pollute
+            (->/let [board (:board <>)]
+              (->/when (= board
+                          (tilt board up)
+                          (tilt board down)
+                          (tilt board left)
+                          (tilt board right))
+                (assoc :over true)
+                (update-in [:player] make-move- (select-keys <> [:board :over]))))))))))
 
 (defn play-game
   "Play an entire game."
