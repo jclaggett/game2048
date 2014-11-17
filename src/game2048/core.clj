@@ -119,6 +119,30 @@
 ;; every function below here are updater functions on game.
 (defrecord Game [^:immutable board, rng, writer, reader])
 
+(defrecord Reader2048 [text]
+  sys/Reader
+  (read- [self]
+    (update-in self [:text] sys/read-))
+  (value- [_]
+    ({"h" :left
+      "j" :down
+      "k" :up
+      "l" :right
+      "q" :quit} text)))
+
+(defn new-game
+  "Return a new game complete with initial pollution."
+  [& {:keys [seed reader]}]
+  (->/do (->Game empty-board
+                 (if seed
+                   (sys/new-rng seed)
+                   (sys/new-rng))
+                 nil
+                 (or reader (->Reader2048 "")))
+         pollute
+         pollute
+         show))
+
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
   [game]
@@ -144,22 +168,18 @@
                         (apply str)
                         )))))
 
-(defn parse-input
-  "Parse the input text to determine which direction to tilt the board."
-  [text]
-  (condp = text
-    "h" left
-    "j" down
-    "k" up
-    "l" right
-    "q" :quit
-    nil))
+(def cmd-map
+  {:up up
+   :down down
+   :left left
+   :right right
+   :quit :quit})
 
 (defn play-turn
   "Play a single turn."
   [game]
   (->/do game
-         (->/let [cmd (by :reader sys/read- (-> sys/value- parse-input))]
+         (->/let [cmd (by :reader sys/read- (-> sys/value- cmd-map))]
            (->/when-not (nil? cmd)
              (->/if (= :quit cmd)
                (assoc :over true)
@@ -168,23 +188,12 @@
                  (->/if (= old-board new-board)
                    (->/when (= old-board
                                (tilt old-board up)
-                               (tilt old-board left))
+                               (tilt old-board down)
+                               (tilt old-board left)
+                               (tilt old-board right))
                      (assoc :over true))
                    pollute)))
              show))))
-
-(defn new-game
-  "Return a new game complete with initial pollution."
-  [& {:keys [seed reader]}]
-  (->/do (->Game empty-board
-                 (if seed
-                   (sys/new-rng seed)
-                   (sys/new-rng))
-                 nil
-                 (or reader ""))
-         pollute
-         pollute
-         show))
 
 (defn play-game
   "Play an entire game."
