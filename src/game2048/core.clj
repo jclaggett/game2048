@@ -133,12 +133,15 @@
 (defn board-str [board over]
   (if over
     "Game over!"
-    (->> board
-         (map #(if (zero? %) '. %))
-         (partition 4)
-         (map #(str (vec %) "\n"))
-         (cons "_________\n")
-         (apply str))))
+    (apply format
+           (str
+              "╭────────────────╮\n"
+              "│%4d%4d%4d%4d│\n"
+              "│%4d%4d%4d%4d│\n"
+              "│%4d%4d%4d%4d│\n"
+              "│%4d%4d%4d%4d│\n"
+              "╰────────────────╯\n")
+           board)))
 
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
