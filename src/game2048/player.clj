@@ -3,6 +3,24 @@
             [game2048.core :as core]
             [lonocloud.synthread :as ->]))
 
+(defrecord Reader2048 [text]
+  sys/Reader
+  (read- [self]
+    (update-in self [:text] sys/read-))
+  (value- [_]
+    ({"h" :left
+      "j" :down
+      "k" :up
+      "l" :right
+      "q" :quit} text)))
+
+(defrecord ReaderRandom [rng]
+  sys/Reader
+  (read- [self]
+    (update-in self [:rng] sys/gen-))
+  (value- [_]
+    (sys/weighted-rnd-nth rng [[:up 1] [:left 100] [:down 1000] [:right 100]])))
+
 (defrecord Writer2048 [writer]
   sys/Writer
   (write- [self game]

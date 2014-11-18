@@ -4,24 +4,6 @@
             [game2048.core :as core]
             [lonocloud.synthread :as ->]))
 
-(defrecord Reader2048 [text]
-  sys/Reader
-  (read- [self]
-    (update-in self [:text] sys/read-))
-  (value- [_]
-    ({"h" :left
-      "j" :down
-      "k" :up
-      "l" :right
-      "q" :quit} text)))
-
-(defrecord ReaderRandom [rng]
-  sys/Reader
-  (read- [self]
-    (update-in self [:rng] sys/gen-))
-  (value- [_]
-    (sys/weighted-rnd-nth rng [[:up 1] [:left 100] [:down 1000] [:right 100]])))
-
 (defn new-game
   "Return a new game complete with initial pollution."
   [& {:keys [seed player reader writer]}]
@@ -30,7 +12,7 @@
                         (sys/new-rng seed)
                         (sys/new-rng))
                       (or player (player/->PlayerReadWrite
-                                  (or reader (->Reader2048 ""))
+                                  (or reader (player/->Reader2048 ""))
                                   (or writer (player/->Writer2048 nil)))))
          core/pollute
          core/pollute))
