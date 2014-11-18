@@ -22,21 +22,6 @@
   (value- [_]
     (sys/weighted-rnd-nth rng [[:up 1] [:left 100] [:down 1000] [:right 100]])))
 
-(defrecord Writer2048 [writer]
-  sys/Writer
-  (write- [self game]
-    (update-in self [:writer] sys/write-
-               (core/board-str (:board game) (:over game)))))
-
-(defrecord WriterCounter [i]
-  sys/Writer
-  (write- [self game]
-    (-> self
-        (->/if (:over game)
-               (->/assoc :writer (sys/write-
-                                   (str (core/board-str (:board game) false) "\nBoard iterations: " i)))
-               (->/assoc :i inc)))))
-
 (defn new-game
   "Return a new game complete with initial pollution."
   [& {:keys [seed player reader writer]}]
@@ -46,7 +31,7 @@
                         (sys/new-rng))
                       (or player (player/->PlayerReadWrite
                                   (or reader (->Reader2048 ""))
-                                  (or writer (->Writer2048 nil)))))
+                                  (or writer (player/->Writer2048 nil)))))
          core/pollute
          core/pollute))
 
