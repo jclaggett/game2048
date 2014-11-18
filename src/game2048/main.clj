@@ -62,5 +62,9 @@
   (-> (new-game :reader (->ReaderRandom (sys/new-rng)) :writer (->WriterCounter 0))
       core/play-game)
 
-  ;; determanistic player
-  (-> (new-game :player (player/->PlayerCorner :dmy)) core/play-game))
+  ;; simple determanistic player
+  (-> (new-game :player (player/->PlayerCorner :dmy)) core/play-game)
+
+  ;; smarter player
+  (-> (new-game :player (player/->PlayerSearch :dmy)) core/play-game)
+  )
