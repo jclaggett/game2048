@@ -115,6 +115,13 @@
        (filter #(zero? (second %)))
        (map first)))
 
+(defn game-over? [board]
+  (= board
+     (tilt board up)
+     (tilt board down)
+     (tilt board right)
+     (tilt board left)))
+
 ;; Rubber meets the road from this point on.
 ;; every function below here are updater functions on game.
 (defrecord Game [^:immutable board, rng, player])
@@ -140,7 +147,7 @@
   ;; with syntax support and updater functions only
   (-> game
       (->/let [idx (by :rng sys/gen- (sys/rnd-nth (find-blanks (:board <>))))
-               val (by :rng sys/gen- (-> sys/num- (#(if (< 0.1 %) 4 2))))]
+               val (by :rng sys/gen- (-> sys/num- (#(if (< % 0.1) 4 2))))]
         (assoc-in [:board idx] val))))
 
 (def cmd-map
@@ -154,21 +161,16 @@
   "Play a single turn."
   [game]
   (->/do game
-    (->/when-let [cmd (by :player
-                          (make-move- (select-keys <> [:board :over]))
-                          (-> get-move- cmd-map))]
-      (->/if (= :quit cmd)
-        (assoc :over true)
-        (->/let [old-board (:board <>)
-                 new-board (by :board (tilt cmd))]
-          pollute
-          (->/when (= new-board
-                      (tilt new-board up)
-                      (tilt new-board down)
-                      (tilt new-board left)
-                      (tilt new-board right))
-            (assoc :over true)
-            (update-in [:player] make-move- (select-keys <> [:board :over]))))))))
+         (->/when-let [cmd (by :player
+                               (make-move- (select-keys <> [:board :over]))
+                               (-> get-move- cmd-map))]
+           (->/if (= :quit cmd)
+             (assoc :over true)
+             (->/let [old-board (:board <>)
+                      new-board (by :board (tilt cmd))]
+               (->/if (= old-board new-board)
+                 (assoc :over (game-over? old-board))
+                 pollute))))))
 
 (defn play-game
   "Play an entire game."

@@ -53,7 +53,7 @@
 (comment
 
   ;; interactive
-  (-> new-game core/play-game)
+  (-> (new-game) core/play-game)
 
   ;; preset moves
   (-> (new-game :seed 0 :reader '(:skip :down :down :down :quit)) core/play-game))
