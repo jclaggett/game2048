@@ -37,10 +37,11 @@
 (def outside-cells (into edge-cells corner-cells))
 
 (defn score-leaf [board]
-  (reduce (fn [ttl idx]
-            (let [tile (nth board idx)]
-              (+ ttl (* idx tile tile))))
-          0 (range 16)))
+  (reduce +
+          (map (fn [tile weight]
+                 (* weight tile tile))
+               board
+               [4 3 2 1, 5 6 7 8, 12 11 10 9, 13 14 15 16])))
 
 (defn score [in-board remain-depth]
   (if (< remain-depth 1)
