@@ -77,15 +77,36 @@
 ;; collapse column 2 up
 ;; occupy column 2
 
+(defn choose-goal [board]
+  (cond
+    (not= (core/col board 0) (core/col (core/tilt board core/up) 0)) [:up]
+    (or (not= (core/col board 0) (core/col (core/tilt board core/left) 0))
+        (some zero? (core/col board 0))) [:left :up :down :right]
+
+    (not= (core/col board 1) (core/col (core/tilt board core/down) 1)) [:down]
+    (or (not= (core/col board 1) (core/col (core/tilt board core/left) 1))
+        (some zero? (core/col board 1))) [:left :down :up :right]
+
+    (not= (core/col board 2) (core/col (core/tilt board core/up) 2)) [:up]
+    (or (not= (core/col board 2) (core/col (core/tilt board core/left) 2))
+        (some zero? (core/col board 2))) [:left :up :down :right]
+
+    :default [:down :left :up :right]
+    )
+  )
+
 (defrecord Serpent [cmd log]
   core/Player
   (make-move- [<> {:keys [board over]}]
     (->/do <>
-           (assoc :cmd (choose-dir board (if (= 0 (board 0))
+           (assoc :cmd (choose-dir board
+                                   (choose-goal board)
+                                   #_(if (= 0 (board 0))
                                            [:up :left]
                                            [:left :up :down :right])))
-           (->/when (= :quit (:cmd <>))
-             (update-in [:log] sys/write- {:board board :over false}))))
+           (->/when true #_(= :quit (:cmd <>))
+             (update-in [:log] sys/write- {:board board :over false})
+             )))
   (get-move- [self] cmd))
 
 (def serpent (->Serpent :quit (->Writer2048 nil)))

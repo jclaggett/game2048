@@ -57,6 +57,11 @@
       down (reverse (cells up))
       up idxs)))
 
+(defn col
+  "Return a column of board. Columns are referenced by idx from 0 to 3."
+  [board idx]
+  (map board (nth (partition 4 (cells left)) idx)))
+
 (defn find-blank
   "Return the index of the farthest blank cell in direction, starting at idx and
   with only blank cells between them. If on the edge or next to an existing
@@ -133,15 +138,16 @@
 (defn board-str [board over]
   (if over
     "Game over!"
-    (apply format
-           (str
-              "╭────────────────╮\n"
-              "│%4d%4d%4d%4d│\n"
-              "│%4d%4d%4d%4d│\n"
-              "│%4d%4d%4d%4d│\n"
-              "│%4d%4d%4d%4d│\n"
-              "╰────────────────╯\n")
-           board)))
+    (apply str
+           (replace {\0 \space}
+                    (apply format
+                           (str "╭────────────────╮\n"
+                                "│%4d%4d%4d%4d│\n"
+                                "│%4d%4d%4d%4d│\n"
+                                "│%4d%4d%4d%4d│\n"
+                                "│%4d%4d%4d%4d│\n"
+                                "╰────────────────╯")
+                           board)))))
 
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
