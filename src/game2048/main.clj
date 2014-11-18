@@ -56,4 +56,11 @@
   (-> (new-game) core/play-game)
 
   ;; preset moves
-  (-> (new-game :seed 0 :reader '(:skip :down :down :down :quit)) core/play-game))
+  (-> (new-game :seed 0 :reader '(:skip :down :down :down :quit)) core/play-game)
+
+  ;; weighted random player, counting the moves in the writer
+  (-> (new-game :reader (->ReaderRandom (sys/new-rng)) :writer (->WriterCounter 0))
+      core/play-game)
+
+  ;; determanistic player
+  (-> (new-game :player (player/->PlayerCorner :dmy)) core/play-game))

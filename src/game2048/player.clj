@@ -13,7 +13,7 @@
   (get-move- [self]
     (-> reader sys/value-)))
 
-(defrecord PlayerCorner [over-writer cmd]
+(defrecord PlayerCorner [cmd]
   core/Player
   (make-move- [self {:keys [board over]}]
     (->/do self
