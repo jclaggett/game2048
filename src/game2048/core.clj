@@ -134,10 +134,9 @@
   (if over
     "Game over!"
     (->> board
-         (map #(if (zero? %) '. %))
+         (map #(if (zero? %) "    ." (format "% 5d" %)))
          (partition 4)
-         (map #(str (vec %) "\n"))
-         (cons "_________\n")
+         (mapcat (fn [row] (apply str "\n" row)))
          (apply str))))
 
 (defn pollute
