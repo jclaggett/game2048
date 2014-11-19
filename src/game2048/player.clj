@@ -36,35 +36,52 @@
 (def corner-cells #{0 3 12 15})
 (def outside-cells (into edge-cells corner-cells))
 
-(defn score-leaf [board]
-  (reduce +
-          (map (fn [tile weight]
-                 (* weight tile tile))
-               board
-               [4 3 2 1, 5 6 7 8, 12 11 10 9, 13 14 15 16])))
+(def ^:static weight-array
+  (long-array [4 3 2 1, 5 6 7 8, 12 11 10 9, 13 14 15 16]))
 
-(defn score [in-board remain-depth]
+(defn score-leaf ^long [board]
+  (loop [i (int 0), ttl 0]
+    (if (> i 15)
+      ttl
+      (let [tile ^long (nth board i)]
+        (recur (inc i)
+               (+ ttl (* (aget (longs weight-array) i) tile tile)))))))
+
+(def ^:static cmd-array
+  (to-array [down left right up]))
+
+(def ^:static cmd-key-array
+  (to-array [:down :left :right :up]))
+
+(defn score [in-board ^long remain-depth]
   (if (< remain-depth 1)
     [:? (score-leaf in-board)]
-    (reduce (fn [[best-cmd best-score :as old-best] cmd]
-              (let [board (core/tilt in-board (core/cmd-map cmd))
-                    blanks (core/find-blanks board)
-                    new-depth (dec remain-depth)
-                    score (if (= board in-board)
-                            0
-                            (if (empty? blanks)
-                              (score-leaf board)
-                              (let [blanks (remove inside-cells blanks)]
-                                (/ (reduce (fn [ttl idx]
-                                             (+ ttl (second (score (assoc board idx 2)
-                                                                   new-depth))))
-                                           0 blanks)
-                                   (double (count blanks))))))]
-                (if (>= score best-score)
-                  [cmd score]
-                  old-best)))
-            [:? 0]
-            [:down :left :right :up])))
+
+    (loop [best-cmd -1
+           best-score -1
+           cmd-num 0]
+      (if (> cmd-num 3)
+        [(aget cmd-key-array best-cmd) best-score]
+        (let [board (core/tilt in-board (aget cmd-array cmd-num))
+              blanks (take 5 (shuffle (core/find-blanks board)))
+              score (if (= board in-board)
+                      0
+                      (if (empty? blanks)
+                        (score-leaf board)
+                        (loop [[blank & blanks] blanks
+                               cnt 0
+                               ttl 0]
+                          (if-not blank
+                            (if (zero? cnt)
+                              0
+                              (/ (double ttl) (double cnt)))
+                            (if (contains? inside-cells blanks)
+                              (recur blanks cnt ttl)
+                              (recur blanks (inc cnt) (+ ttl (long (second (score (assoc board blank 2)
+                                                                                  (dec remain-depth)))))))))))]
+          (if (>= score best-score)
+            (recur cmd-num score (inc cmd-num))
+            (recur best-cmd best-score (inc cmd-num))))))))
 
 (defrecord PlayerSearch [cmd]
   core/Player
