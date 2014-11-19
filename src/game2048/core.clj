@@ -139,15 +139,14 @@
   (if over
     "Game over!"
     (apply str
-           (replace {\0 \space}
-                    (apply format
-                           (str "╭────────────────╮\n"
-                                "│%4d%4d%4d%4d│\n"
-                                "│%4d%4d%4d%4d│\n"
-                                "│%4d%4d%4d%4d│\n"
-                                "│%4d%4d%4d%4d│\n"
-                                "╰────────────────╯")
-                           board)))))
+           (apply format
+                  (str "╭────────────────╮\n"
+                       "│%4s%4s%4s%4s│\n"
+                       "│%4s%4s%4s%4s│\n"
+                       "│%4s%4s%4s%4s│\n"
+                       "│%4s%4s%4s%4s│\n"
+                       "╰────────────────╯")
+                  (replace {0 \space} board)))))
 
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
