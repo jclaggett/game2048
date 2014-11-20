@@ -16,8 +16,7 @@ class of functions known as 'updater functions'.
 
 Here are the specific rules of this style:
 
-1. An Updater Function is a function that can always accept its return value as
-   its first argument.
+1. An Updater Function can always accept as its first argument any value it could return.
 2. Updater Functions may perform side effects. No other functions may perform
    side effects or call functions that do.
 3. Updater Functions may mutate their first argument and no other argument. No
