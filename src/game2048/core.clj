@@ -135,18 +135,29 @@
   (^:updater make-move- [self board-over])
   (get-move- [self]))
 
+
+(def glyphs
+  (zipmap
+   (cons 0 (next (iterate #(* % 2) 1)))
+   (cons \space '[🁤 🁥 🁦 🁧 🁨 🁩 🁰 🁷 🁾 🂅 🂌 🂓])))
+
 (defn board-str [board over]
   (if over
     "Game over!"
     (apply str
            (apply format
-                  (str "╭────────────────╮\n"
-                       "│%4s%4s%4s%4s│\n"
-                       "│%4s%4s%4s%4s│\n"
-                       "│%4s%4s%4s%4s│\n"
-                       "│%4s%4s%4s%4s│\n"
-                       "╰────────────────╯")
-                  (replace {0 \space} board)))))
+                  (str "╭───────────╮\n"
+                       "│%s %s %s %s│\n"
+                       "│%s %s %s %s│\n"
+                       "│%s %s %s %s│\n"
+                       "│%s %s %s %s│\n"
+                       "╰───────────╯")
+                  (map #(cond
+                         (zero? %) "  "
+                         (<= % 64) (format "%2d" %)
+                         (<= % 4096) (format "\033[95m%2d\033[0m" (/ % 64))
+                         :else (format "\033[92m%2d\033[0m" (/ % 4096)))
+                       board)))))
 
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
