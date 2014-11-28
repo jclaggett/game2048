@@ -1,6 +1,10 @@
 (ns game2048.core
   (:require [game2048.sys :as sys]
-            [lonocloud.synthread :as ->]))
+            #+clj [lonocloud.synthread :as ->]
+            #+cljs [goog.string.format])
+  #+cljs (:require-macros [lonocloud.synthread :as ->]))
+
+#+cljs (def format goog.string/format)
 
 (comment
   "I'd like to define a 2048 component.
@@ -194,7 +198,9 @@
 (defn play-game
   "Play an entire game."
   [game]
-  (loop [game game]
-    (if (:over game)
-      game
-      (recur (play-turn game)))))
+
+  (if (:over game)
+    game
+    (let [new-game (play-turn game)]
+      #+clj (recur new-game)
+      #+cljs (js/setTimeout #(play-game new-game) 0))))

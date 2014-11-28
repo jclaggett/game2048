@@ -1,7 +1,8 @@
 (ns game2048.player
   (:require [game2048.sys :as sys]
             [game2048.core :as core :refer [up down left right]]
-            [lonocloud.synthread :as ->]))
+            #+clj [lonocloud.synthread :as ->])
+  #+cljs (:require-macros [lonocloud.synthread :as ->]))
 
 (defrecord Reader2048 [text]
   sys/Reader
@@ -62,7 +63,7 @@
     (->/do self
       (->/if over
         (->/assoc
-         :cmd (->/reset :quit) ;; not really needed
+         :cmd (do :quit) ;; not really needed
          :writer (sys/write- {:board board}))
         (->/do
           (assoc :cmd

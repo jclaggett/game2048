@@ -1,5 +1,6 @@
 (ns game2048.sys
-  ( :require [lonocloud.synthread :as ->]))
+  (:require #+clj [lonocloud.synthread :as ->])
+  #+cljs (:require-macros [lonocloud.synthread :as ->]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Random Number Generator Component
@@ -36,6 +37,7 @@
                     (reduced x)
                     new-weight))) 0 pairs))))
 
+#+clj
 (defrecord JavaRNG [num obj]
   RNG
   (seed- [self v]
@@ -44,17 +46,26 @@
   (num- [_] num)
   (gen- [self] (assoc self :num (.nextFloat obj))))
 
+#+cljs
+(extend-protocol RNG
+  nil
+  (seed- [self v] (throw (js/Error. "Seeded rng unsupported in the browser")))
+  (num- [_] (Math/random))
+  (gen- [self] self))
+
 (defn new-rng
   "Return a new random number generator."
-  ([] (->JavaRNG nil (java.util.Random.)))
-  ([seed] (->JavaRNG seed (java.util.Random. seed))))
+  ([] #+clj (->JavaRNG nil (java.util.Random.)))
+  ([seed]
+     #+clj (->JavaRNG seed (java.util.Random. seed))
+     #+cljs (throw (js/Error. "Seeded rng unsupported in the browser"))))
 
 (extend-protocol Reader
-  java.lang.String
-  (read- [_] (read-line))
+  #+clj java.lang.String #+cljs js/String
+  (read- [_] #+clj (read-line) #+cljs "unsupported")
   (value- [self] self)
 
-  clojure.lang.PersistentList
+  #+clj clojure.lang.PersistentList #+cljs cljs.core.List
   (read- [v] (pop v))
   (value- [v] (peek v)))
 
@@ -63,3 +74,5 @@
   (write- [_ msg]
     (println msg)
     _))
+
+#+cljs (set! *print-fn* (fn [& args] (.log js/console (apply str args))))

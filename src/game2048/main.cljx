@@ -2,7 +2,8 @@
   (:require [game2048.sys :as sys]
             [game2048.player :as player]
             [game2048.core :as core]
-            [lonocloud.synthread :as ->]))
+            #+clj [lonocloud.synthread :as ->])
+  #+cljs (:require-macros [lonocloud.synthread :as ->]))
 
 (defn new-game
   "Return a new game complete with initial pollution."
@@ -35,3 +36,6 @@
   ;; smarter player
   (-> (new-game :player (player/->PlayerSearch :dmy)) core/play-game)
   )
+
+(defn go []
+  (-> (new-game :player (player/->PlayerSearch :dmy)) core/play-game))
