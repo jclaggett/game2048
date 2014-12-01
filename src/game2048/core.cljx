@@ -168,10 +168,10 @@
   [game]
 
   ;; with syntax support and updater functions only
-  (-> game
-      (->/let [idx (by :rng sys/gen- (sys/rnd-nth (find-blanks (:board <>))))
-               val (by :rng sys/gen- (-> sys/num- (#(if (< % 0.1) 4 2))))]
-        (assoc-in [:board idx] val))))
+  (->/do game
+         (->/let [idx (by :rng sys/gen- (sys/rnd-nth (find-blanks (:board <>))))
+                  val (by :rng sys/gen- (-> sys/num- (#(if (< % 0.1) 4 2))))]
+           (assoc-in [:board idx] val))))
 
 (def cmd-map
   {:up up
@@ -190,7 +190,7 @@
            (->/if (= :quit cmd)
              (assoc :over true)
              (->/let [old-board (:board <>)
-                      new-board (by :board (tilt cmd))]
+                      new-board (by :board (tilt cmd) identity)]
                (->/if (= old-board new-board)
                  (assoc :over (game-over? old-board))
                  pollute))))))

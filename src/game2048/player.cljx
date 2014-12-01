@@ -4,16 +4,18 @@
             #+clj [lonocloud.synthread :as ->])
   #+cljs (:require-macros [lonocloud.synthread :as ->]))
 
+(def key-map
+  {"h" :left
+   "j" :down
+   "k" :up
+   "l" :right
+   "q" :quit})
+
 (defrecord Reader2048 [text]
   sys/Reader
   (read- [self]
     (update-in self [:text] sys/read-))
-  (value- [_]
-    ({"h" :left
-      "j" :down
-      "k" :up
-      "l" :right
-      "q" :quit} text)))
+  (value- [_] (key-map text)))
 
 (defrecord ReaderRandom [rng]
   sys/Reader
@@ -81,22 +83,28 @@
 (defn choose-goal [board]
   (cond
     (not= (core/col board 0) (core/col (core/tilt board core/up) 0)) [:up]
-    (or (not= (core/col board 0) (core/col (core/tilt board core/left) 0))
-        (some zero? (core/col board 0))) [:left :up :down :right]
+    (not= (core/col board 0) (core/col (core/tilt board core/left) 0)) [:left]
+    (or (some zero? (core/col board 0))
+        (< (last (core/col board 0)) (last (core/col board 1))))
+    [:up :left :down :right]
 
     (not= (core/col board 1) (core/col (core/tilt board core/down) 1)) [:down]
-    (or (not= (core/col board 1) (core/col (core/tilt board core/left) 1))
-        (some zero? (core/col board 1))) [:left :down :up :right]
+    (not= (core/col board 1) (core/col (core/tilt board core/left) 1)) [:left]
+    (or (some zero? (core/col board 1))
+        (< (last (core/col board 1)) (last (core/col board 2))))
+     [:down :left :up :right]
 
     (not= (core/col board 2) (core/col (core/tilt board core/up) 2)) [:up]
-    (or (not= (core/col board 2) (core/col (core/tilt board core/left) 2))
-        (some zero? (core/col board 2))) [:left :up :down :right]
+    (not= (core/col board 2) (core/col (core/tilt board core/left) 2)) [:left]
+    (or (some zero? (core/col board 2))
+        (< (last (core/col board 2)) (last (core/col board 3))))
+    [:up :left :down :right]
 
     :default [:down :left :up :right]
     )
   )
 
-(defrecord Serpent [cmd log]
+(defrecord Serpent [cmd log interact]
   core/Player
   (make-move- [<> {:keys [board over]}]
     (->/do <>
@@ -105,12 +113,16 @@
                                    #_(if (= 0 (board 0))
                                            [:up :left]
                                            [:left :up :down :right])))
-           (->/when true #_(= :quit (:cmd <>))
-             (update-in [:log] sys/write- {:board board :over false})
-             )))
+           (update-in [:log] sys/write- {:board board :over false})
+           (->/when interact
+             (update-in [:log2] sys/write- (str "Enter command (" (:cmd <>) ")"))
+             (->/let [override (by :interact sys/read- sys/value-)]
+               (->/if (= "c" override)
+                 (assoc :interact nil) ;; turn off future interaction.
+                 (assoc :cmd (get key-map override (:cmd <>))))))))
   (get-move- [self] cmd))
 
-(def serpent (->Serpent :quit (->Writer2048 nil)))
+(def serpent (->Serpent :quit (->Writer2048 nil) "init"))
 
 ;; PlayerSearch
 (def inside-cells #{5 6 9 10})

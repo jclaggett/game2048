@@ -9,3 +9,5 @@ pom.xml.asc
 /.nrepl-port
 all.js
 all.jsm
+*.swp
+*.swo
