@@ -42,3 +42,5 @@
 
 (defn go []
   (-> (new-game :player (player/->PlayerSearch :dmy)) core/play-game))
+
+#+cljs (go)
