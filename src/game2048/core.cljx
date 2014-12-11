@@ -121,15 +121,6 @@
      (tilt board up)
      (tilt board left)))
 
-;; Rubber meets the road from this point on.
-;; every function below here are updater functions on game.
-(defrecord Game [^:immutable board, rng, player])
-
-(defprotocol Player
-  (^:updater make-move- [self board-over])
-  (get-move- [self]))
-
-
 (def glyphs
   (zipmap
    (cons 0 (next (iterate #(* % 2) 1)))
@@ -152,6 +143,14 @@
                          (<= % 4096) (format "\033[95m%2d\033[0m" (/ % 64))
                          :else (format "\033[92m%2d\033[0m" (/ % 4096)))
                        board)))))
+
+;; Rubber meets the road from this point on.
+;; every function below here are updater functions on game.
+(defrecord Game [^:immutable board, rng, player, observer])
+
+(defprotocol Player
+  (^:updater make-move- [self board-over])
+  (get-move- [self]))
 
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
