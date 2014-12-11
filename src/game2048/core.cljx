@@ -114,10 +114,7 @@
 (defn find-blanks
   "Return a sequence of indicies for all blank cells found in board."
   [board]
-  (->> board
-       (map list (range))
-       (filter #(zero? (second %)))
-       (map first)))
+  (vec (keep-indexed #(when (zero? %2) %1) board)))
 
 (defn game-over? [board]
   (= board
