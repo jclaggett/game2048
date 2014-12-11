@@ -119,8 +119,6 @@
 (defn game-over? [board]
   (= board
      (tilt board up)
-     (tilt board down)
-     (tilt board right)
      (tilt board left)))
 
 ;; Rubber meets the road from this point on.
