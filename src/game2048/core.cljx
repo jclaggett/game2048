@@ -65,6 +65,21 @@
   [board idx]
   (map board (nth (partition 4 (cells left)) idx)))
 
+(defprotocol Tiltable
+  (get-cell- [_ idx not-found])
+  (move-tile- [_ from to])
+  (upgrade- [_ idx value] "Update a value, which is assumed negative to indicate 'merged'.")
+  (clear-merged- [_] "Update every cell's value to its absolute value")
+  (new-tile- [_ idx value]))
+
+(extend-protocol Tiltable
+  #+cljs cljs.core.PersistentVector #+clj clojure.lang.PersistentVector
+  (get-cell- [v idx not-found] (get v idx not-found))
+  (move-tile- [v from to] (assoc v from 0 to (nth v from)))
+  (upgrade- [v idx value] (assoc v idx value))
+  (clear-merged- [v] (mapv #(Math/abs %) v))
+  (new-tile- [v idx value] (assoc v idx value)))
+
 (defn find-blank
   "Return the index of the farthest blank cell in direction, starting at idx and
   with only blank cells between them. If on the edge or next to an existing
@@ -72,48 +87,29 @@
   [board direction idx]
   (loop [cell idx]
     (let [new-cell (direction cell)]
-      (if (zero? (get board new-cell -1))
+      (if (zero? (get-cell- board new-cell -1))
         (recur new-cell)
         cell))))
 
-(defn slide
-  "Slide each non-blank in direction until stopped by another value or
-  the edge."
-  [board direction]
-  (reduce
-    (fn [board cell]
-      (if (zero? (get board cell))
-        board
-        (let [new-cell (find-blank board direction cell)]
-          (if (not= cell new-cell)
-            (assoc board
-                   new-cell (get board cell)
-                   cell 0)
-            board))))
-    board
-    (cells direction)))
-
-(defn combine
-  "Combine equal values that are adjacent in the direction specified. Replace
-  the 'first' value in that direction with the sum of both values."
-  [board direction]
-  (reduce
-    (fn [board cell]
-      (if (= (get board cell)
-             (get board (direction cell)))
-        (assoc board
-               (direction cell) (* 2 (get board cell))
-               cell 0)
-        board))
-    board
-    (cells direction)))
+(defn tilt-cell [board origin direction]
+  (let [value (get-cell- board origin nil)]
+    (-> board
+        (->/when-not (zero? value)
+          (->/let [target (find-blank board direction origin)]
+            (->/let [merge-target (direction target)]
+              (->/if (and merge-target (= value (get-cell- board merge-target nil)))
+                (-> (move-tile- origin merge-target)
+                    (upgrade- merge-target (* -2 value)))
+                (->/when-not (= target origin)
+                  (move-tile- origin target)))))))))
 
 (defn tilt [board direction]
-  "Tilt the board according to the specified direction."
-  (-> board
-      (slide direction)
-      (combine direction)
-      (slide direction)))
+  (clear-merged-
+   (reduce
+    (fn [board origin]
+      (tilt-cell board origin direction))
+    board
+    (cells direction))))
 
 (defn find-blanks
   "Return a sequence of indicies for all blank cells found in board."
