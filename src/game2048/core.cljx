@@ -15,11 +15,7 @@
        updaters or getters.
     3. Mark state that needs to be immutable.")
 
-(def empty-board
-  [0,0,0,0
-   0,0,0,0
-   0,0,0,0
-   0,0,0,0])
+(def empty-board (vec (repeat 16 0)))
 
 ;; TODO These functions all hard code a 4x4 board maybe it would be better to
 ;; generate these functions based on the board dimensions.
