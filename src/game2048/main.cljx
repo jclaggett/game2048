@@ -2,21 +2,24 @@
   (:require [game2048.sys :as sys]
             [game2048.player :as player]
             [game2048.core :as core]
-            #+clj [lonocloud.synthread :as ->])
+            #+clj [lonocloud.synthread :as ->]
+            #+cljs [game2048.ui :as ui])
   #+cljs (:require-macros [lonocloud.synthread :as ->]))
 
 (defn new-game
   "Return a new game complete with initial pollution."
-  [& {:keys [seed player reader writer]}]
+  [& {:keys [seed player reader writer observer]}]
   (->/do (core/->Game core/empty-board
                       (if seed
                         (sys/new-rng seed)
                         (sys/new-rng))
-                      (or player (player/->PlayerReadWrite
-                                  (or reader (player/->Reader2048 ""))
-                                  (or writer (player/->Writer2048 nil)))))
+                      (or player (player/->PlayerSearch :dmy))
+                      (or observer
+                          #+clj (player/->ObserverStdout nil)
+                          #+cljs (ui/make-ui)))
          core/pollute
-         core/pollute))
+         core/pollute
+         (update-in [:observer] core/observe- (:board <>) (:over <>) :pollute)))
 
 (comment
 

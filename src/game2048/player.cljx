@@ -30,6 +30,11 @@
     (update-in self [:writer] sys/write-
                (core/board-str (:board game) (:over game)))))
 
+(defrecord ObserverStdout [writer]
+  core/Observer
+  (observe- [self board over cmd]
+    (update-in self [:writer] sys/write- (core/board-str board over))))
+
 (defrecord WriterCounter [i]
   sys/Writer
   (write- [self game]
@@ -154,7 +159,6 @@
   core/Player
   (make-move- [self {:keys [board over]}]
     (->/do self
-           (->/assoc :writer (sys/write- (core/board-str board over)))
            (->/let [depth (inc (/ (count (remove zero? board)) 5))
                     [cmd score] (score board depth)]
              (->/if (= board (core/tilt board (core/cmd-map cmd)))

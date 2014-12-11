@@ -152,6 +152,13 @@
   (^:updater make-move- [self board-over])
   (get-move- [self]))
 
+(defprotocol Observer
+  (^:updater observe- [self board over cmd]))
+
+(extend-protocol Observer
+  nil
+  (observe- [self board over cmd] self))
+
 (defn pollute
   "Add a 2 (90% chance) or 4 (10% chance) to a random blank cell."
   [game]
@@ -170,9 +177,10 @@
    :quit :quit})
 
 (defn play-turn
-  "Play a single turn."
+  "Play a single (synchronous) turn."
   [game]
   (->/do game
+         (update-in [:observer] observe- (:board <>) (:over <>) :pollute)
          (->/when-let [cmd (by :player
                                (make-move- (select-keys <> [:board :over]))
                                (-> get-move- cmd-map))]
@@ -180,9 +188,11 @@
              (assoc :over true)
              (->/let [old-board (:board <>)
                       new-board (by :board (tilt cmd) identity)]
-               (->/if (= old-board new-board)
-                 (assoc :over (game-over? old-board))
-                 pollute))))))
+               (->/when (and (= old-board new-board) (game-over? old-board))
+                 (assoc :over true))))
+           (update-in [:observer] observe- (:board <>) (:over <>) cmd)
+           (->/when-not (:over <>)
+             pollute))))
 
 (defn play-game
   "Play an entire game."
