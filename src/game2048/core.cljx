@@ -43,19 +43,22 @@
    (when (< idx 12)
     (+ idx 4)))
 
-(defn cells
+(def targets
+  "Returns a sequence of board indicies, starting at a board edge and
+  advancing in the opposite of direction, ending just before it would
+  reach idx."
+  (memoize
+   (fn
+     [idx direction]
+     (vec (reverse (take-while some? (next (iterate direction idx))))))))
+
+(def cells
   "Returns a sequence of board indicies specified by direction. Each specific
   sequence is designed so that values in the cells are only operated once by
   slide or combine operations."
-  [direction]
-  (let [idxs (range 16)
-        size 4]
-    (condp = direction
-      left (map #(+ (int (/ % size)) (* size (rem % size)))
-                idxs)
-      right (reverse (cells left))
-      down (reverse (cells up))
-      up idxs)))
+  (memoize
+   (fn [direction]
+     (sort-by #(count (targets % direction)) (range 16)))))
 
 (defn col
   "Return a column of board. Columns are referenced by idx from 0 to 3."
