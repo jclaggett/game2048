@@ -22,6 +22,11 @@ Here are the specific rules of this style:
 3. Updater Functions may mutate their first argument and no other argument. No
    other functions may mutate their arguments or call functions that do.
 
+## For ClojureScript dev:
+
+lein cljx auto < /dev/null &
+lein cljsbuild auto
+
 ## License
 
 Copyright © 2014 Jonathan Claggett & Chris Houser

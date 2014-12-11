@@ -19,7 +19,7 @@
                    :rules :cljs}]}
   :cljsbuild {:builds [{:source-paths ["target/classes"]
                         :compiler {:output-to "all.js"
-                                   :optimizations :whitespace
+                                   :optimizations :simple ;; :advanced
                                    :pretty-print true
                                    :source-map "all.jsm"}}]})
 
